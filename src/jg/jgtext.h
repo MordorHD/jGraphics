@@ -63,7 +63,7 @@ bool JGAppendString(JGTEXT, string_t);
  **/
 bool JGInsertString(JGTEXT, string_t, int);
 
-#define JGInBounds(text, index) (index>=0&&index<(app)->len)
+#define JGInBounds(text, index) (index>=0&&index<(text)->len)
 
 /**
  * Removes char of the given JGTEXT instance at given index.
