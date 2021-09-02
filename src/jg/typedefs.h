@@ -23,4 +23,20 @@ typedef const char *string_t;
 
 typedef unsigned long int color_t;
 
+// has to be an int
+#ifndef JGSETTING_UNIT_INT_TYPE
+#    define JGSETTING_UNIT_INT_TYPE int
+#endif // JGSETTING_UNIT_INT_TYPE
+
+typedef JGSETTING_UNIT_INT_TYPE unit_t;
+
+// has to be a float (float/double/long double)
+#ifndef JGSETTING_UNIT_FLOAT_TYPE
+#    define JGSETTING_UNIT_FLOAT_TYPE float
+#endif // JGSETTING_UNIT_FLOAT_TYPE
+
+typedef JGSETTING_UNIT_FLOAT_TYPE unitf_t;
+
+#define CLP(a) const a*
+
 #endif // __TYPEDEFS_H__

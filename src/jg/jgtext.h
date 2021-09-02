@@ -3,6 +3,20 @@
 
 #include "typedefs.h"
 
+// just a base for font, will get changed
+#define JGFONT_PLAIN 0x0
+#define JGFONT_BOLD 0x1
+#define JGFONT_ITALIC 0x2
+#define JGFONT_CROSSED 0x4
+
+typedef struct FontTag {
+    char *fontFamily;
+    char *fontName;
+    int glyphCnt;
+    short style;
+    short size;
+} JGFONT__, *JGFONT;
+
 typedef struct TextTag {
     char *text;
     int len;
@@ -12,7 +26,7 @@ typedef struct TextTag {
 /**
  * Creates a JGTEXT instance, should be paired with JGDestroyText.
  *
- * @param string_t - Initial text, can be null
+ * @param string_t - Initial text
  * @return An allocated JGTEXT instance
  **/
 JGTEXT JGCreateText(string_t);
@@ -20,7 +34,7 @@ JGTEXT JGCreateText(string_t);
 /**
  * Frees all resources associated with the given JGTEXT instance.
  *
- * @param JGTEXT - JGTEXT instance, can be null
+ * @param JGTEXT - JGTEXT instance
  * @return If the parameter was null
  **/
 bool JGDestroyText(JGTEXT);
@@ -39,7 +53,7 @@ char *JGGetString(JGTEXT, char *restrict, int);
  * Sets the text of given JGTEXT instance to given string.
  *
  * @param JGTEXT - JGTEXT instance, cannot be null
- * @param string_t - String to set the text to, can be null
+ * @param string_t - String to set the text to
  * @return If the text was cleared
  **/
 bool JGSetString(JGTEXT, string_t);
@@ -48,7 +62,7 @@ bool JGSetString(JGTEXT, string_t);
  * Appends given JGTEXT instance with given string.
  *
  * @param JGTEXT - JGTEXT instance, cannot be null
- * @param string_t - String to append, can be null
+ * @param string_t - String to append
  * @return If the text content changed
  **/
 bool JGAppendString(JGTEXT, string_t);
@@ -76,7 +90,7 @@ bool JGRemoveCharAt(JGTEXT, int);
 
 /**
  * Removes a range of given length, starting from given index, from given JGTEXT instance.
- * Note: Range given must be in bounds, unexpected behaviour like a crash could occur.
+ * Note: Range given must be in bounds, otherwise unexpected behavior like a crash could occur.
  *
  * @param JGTEXT - JGTEXT instance, cannot be null
  * @param int    - Start index
@@ -94,7 +108,7 @@ bool JGRemoveRangeAt(JGTEXT, int, int);
  * @param int    - Index to search from
  * @return Index of given char if found, otherwise -1
  **/
-int JGIndexOf(JGTEXT, char, int);
+int JGFindChar(JGTEXT, char, int);
 
 /**
  * Finds given string inside of the JGTEXT instance.

@@ -1,3 +1,22 @@
+/* JONAS GRAPHICS V.0
+   The cross platform graphics library. Use it to create any GUI application or game in C.
+   Includes:
+   - Component system (IN PROGRESS)
+   - Sound system (NOT YET)
+   - Image system (NOT YET)
+
+   When using any function or macro in this library, only use NULL arguments when it is explicitly allowed.
+   Naming conventions:
+   - Every macro function or struct has the prefix JG
+   - All structs have (excluding JGEVENT) have two typedef version
+     - JGSTRUCT__
+     - *JGSTRUCT
+   - Usually, there are functions given to create and destroy the struct pointers; in this pattern:
+     - JGSTRUCT JGCreateStruct(void)
+     - bool JGDestroyStruct(JGSTRUCT)
+
+*/
+
 #ifndef __JGBASE_H__
 #define __JGBASE_H__
 
@@ -6,22 +25,6 @@
 #include <time.h>
 
 #define JGIsFullScreen(app) ((app)->fullScreen!=NULL)
-
-typedef struct ColorPaletteTag {
-    color_t bgC0Color;
-    color_t bgB0Color;
-    color_t bgB1Color;
-    color_t fgColor;
-    color_t txColor;
-} JGCOLORPALETTE__, *JGCOLORPALETTE;
-
-#define JGCCP_NONE 0x0
-#define JGCCP_SKY 0x1
-
-JGCOLORPALETTE JGCreateColorPalette(int);
-bool JGDestroyColorPalette(JGCOLORPALETTE);
-
-color_t BrighterColor(color_t, float);
 
 #ifdef _WIN32 // windows 32/64 bit
 
@@ -38,6 +41,7 @@ color_t BrighterColor(color_t, float);
         JGCONTAINER container;
         HANDLE thread;
         JGCOLORPALETTE palette;
+        JGGRAPHICS buffer;
         char keyStates[0x100];
         int pmx;
         int pmy;
@@ -51,13 +55,13 @@ color_t BrighterColor(color_t, float);
 
     LRESULT CALLBACK JGFullScreenProc__(HWND, UINT, WPARAM, LPARAM);
 
-    #define JGSetAppBounds(app, x, y, w, h) SetWindowPos((app)->handle, HWND_TOP, x, y, w, h, 0)
-    #define JGGetAppBounds(app, lpr) GetClientRect((app)->handle, lpr)
+    #define JGSetAppBounds(app, x, y, w, h) SetWindowPos((app)->root, HWND_TOP, x, y, w, h, 0)
+    #define JGGetAppBounds(app, lpr) GetClientRect((app)->root, lpr)
 
     #define JGSetAppTitle(app, title) SetWindowText((app)->root, title)
     #define JGGetAppTitle(app, title, max_n) GetWindowText((app)->root, title, max_n)
 
-    #define JGIsAppFocused(app) (GetFocus()==(app)->handle)
+    #define JGIsAppFocused(app) (GetFocus()==(app)->root)
 
     struct ClockTag;
 
@@ -74,18 +78,6 @@ color_t BrighterColor(color_t, float);
         clock_t runtime;
         clock_t tickDelay;
     } JGCLOCK__, *JGCLOCK;
-
-    /**
-     * Creates a new thread with a clock running that calls given JGCLOCKFUNC every cycle.
-     *
-     * @param CLOCKFUNC - function to execute every clock cycle
-     * @param clock_t   - Clock cycle duration, in milliseconds
-     * @return Constructed clock
-     **/
-    JGCLOCK JGCreateClock(JGCLOCKFUNC, clock_t);
-    bool JGDestroyClock(JGCLOCK);
-    bool JGStartClock(JGCLOCK);
-    bool JGInterruptClock(JGCLOCK);
 
     #define JG_INIT { WNDCLASS wc = {0}; \
                     wc.lpfnWndProc = JGApplicationProc__; \
@@ -131,9 +123,16 @@ bool JGDestroyApplication(JGAPPLICATION);
 bool JGRunApplication(JGAPPLICATION, int);
 bool JGToggleFullScreen(JGAPPLICATION);
 
-#define JGAddAppChild(parent, child) (child)->app = parent; JGAddChild0((parent)->container, child)
-#define JGRemoveAppChild(parent, index) JGRemoveChild0((parent)->container, index)
-#define JGIndexOfAppChild(parent, child) JGIndexOfChild0((parent)->container, child)
-#define JGContainsAppChild(parent, child) JGContainsChild0((parent)->container, child)
+/**
+ * Creates a new thread with a clock running that calls given JGCLOCKFUNC every cycle.
+ *
+ * @param CLOCKFUNC - function to execute every clock cycle
+ * @param clock_t   - Clock cycle duration, in milliseconds
+ * @return Constructed clock
+ **/
+JGCLOCK JGCreateClock(JGCLOCKFUNC, clock_t);
+bool JGDestroyClock(JGCLOCK);
+bool JGStartClock(JGCLOCK);
+bool JGInterruptClock(JGCLOCK);
 
 #endif // __JGBASE_H__

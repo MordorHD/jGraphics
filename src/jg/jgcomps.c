@@ -1,5 +1,6 @@
 #include "jgcomps.h"
 #include "jgbase.h"
+#include "jggeom.h"
 
 //////////////////////////////////
 //          COMPONENT           //
@@ -9,47 +10,51 @@ JGCOMPONENT JGCreateComponent(int type, void *base, int state, JGLISTENER listen
 {
     JGCOMPONENT comp = malloc(sizeof(JGCOMPONENT__));
     comp->type = type;
-    comp->state = state | JGCOMPS_REDRAW;
+    comp->state = state | JGCOMP_STATE_REDRAW;
     comp->parent = NULL;
-    comp->listener = malloc(sizeof(JGLISTENER));
-    *(comp->listener) = listener;
-    comp->listenerCnt = 1;
+    if(listener != NULL)
+    {
+        comp->listener = malloc(sizeof(JGLISTENER));
+        *(comp->listener) = listener;
+        comp->listenerCnt = 1;
+    }
+    else
+    {
+        comp->listener = NULL;
+        comp->listenerCnt = 0;
+    }
     comp->painter = painter;
-    // test values
-    comp->x = 10;
-    comp->y = 10;
-    comp->width = 50;
-    comp->height = 50;
     comp->container = base;
     return comp;
 }
 
 // destroying specific component types
-static inline void JGDestroyComponentInfo(void *info, int type)
+static inline void JGDestroyComponentBase(void *base, int type)
 {
     switch(type)
     {
-    case JGCOMPT_CONTAINER:
+    case JGCOMP_TYPE_CONTAINER:
     {
-        JGCONTAINER cont = (JGCONTAINER) info;
+        JGCONTAINER cont = (JGCONTAINER) base;
         int cnt = cont->childCnt;
-        JGCOMPONENT chn = cont->children;
+        JGCOMPONENT *chn = cont->children;
         while(cnt--)
         {
-            JGDestroyComponent(chn);
+            JGDestroyComponent(*chn);
             chn++;
         }
         free(cont->children);
+        free(cont);
         break;
     }
-    case JGCOMPT_BUTTON:
+    case JGCOMP_TYPE_BUTTON:
+    case JGCOMP_TYPE_LABEL:
     {
-        JGBUTTON button = (JGBUTTON) info;
-        JGDestroyText(button->text);
+        JGTEXT text = (JGTEXT) base;
+        JGDestroyText(text);
         break;
     }
     }
-    free(info);
 }
 
 // destroying a component, freeing it from memory, includes all children
@@ -57,7 +62,7 @@ bool JGDestroyComponent(JGCOMPONENT comp)
 {
     if(comp == NULL)
         return 0;
-    JGDestroyComponentInfo(comp->container, comp->type);
+    JGDestroyComponentBase(comp->container, comp->type);
     if(comp->parent != NULL)
     {
         int index = JGIndexOfChild0(comp->parent, comp);
@@ -76,40 +81,40 @@ short JGDispatchEvent(JGCOMPONENT comp, const JGEVENT *event)
     switch(event->type)
     {
     case JGEVENT_ID_MOUSEPRESSED:
-        if(comp->state & JGCOMPS_MOUSEIN)
+        if(comp->state & JGCOMP_STATE_MOUSEIN)
         {
-            comp->state |= JGCOMPS_PRESSED;
-            if(comp->state & JGCOMPS_PSEVENT)
-                comp->state |= JGCOMPS_REDRAW;
+            comp->state |= JGCOMP_STATE_PRESSED;
+            if(comp->state & JGCOMP_STATE_PSEVENT)
+                comp->state |= JGCOMP_STATE_REDRAW;
         }
         break;
     case JGEVENT_ID_MOUSERELEASED:
-        if((comp->state & JGCOMPS_MOUSEIN) && (comp->state & JGCOMPS_PRESSED))
+        if((comp->state & JGCOMP_STATE_MOUSEIN) && (comp->state & JGCOMP_STATE_PRESSED))
         {
-            comp->state &= ~JGCOMPS_PRESSED;
-            comp->state ^= JGCOMPS_TOGGLED;
-            if(comp->state & JGCOMPS_TGEVENT)
-                comp->state |= JGCOMPS_REDRAW;
+            comp->state ^= JGCOMP_STATE_TOGGLED;
+            if(comp->state & JGCOMP_STATE_TGEVENT)
+                comp->state |= JGCOMP_STATE_REDRAW;
             extraDispatch = JGEVENT_ID_TOGGLE;
         }
+        comp->state &= ~JGCOMP_STATE_PRESSED;
         break;
     case JGEVENT_ID_MOUSEMOVED:
-        if(!(comp->state & JGCOMPS_MOUSEIN))
+        if(!(comp->state & JGCOMP_STATE_MOUSEIN))
         {
-            if(JGRectContains(comp, event->x, event->y))
+            if(JGRectContains(&comp->rect, &event->mousePos))
             {
-                comp->state |= JGCOMPS_MOUSEIN;
+                comp->state |= JGCOMP_STATE_MOUSEIN;
                 extraDispatch = JGEVENT_ID_HOVER;
-                if(comp->state & JGCOMPS_MIEVENT)
-                    comp->state |= JGCOMPS_REDRAW;
+                if(comp->state & JGCOMP_STATE_MIEVENT)
+                    comp->state |= JGCOMP_STATE_REDRAW;
             }
         }
-        else if(!JGRectContains(comp, event->x, event->y))
+        else if(!JGRectContains(&comp->rect, &event->mousePos))
         {
-            comp->state &= ~JGCOMPS_MOUSEIN;
+            comp->state &= ~JGCOMP_STATE_MOUSEIN;
             extraDispatch = JGEVENT_ID_LEAVE;
-            if(comp->state & JGCOMPS_MOEVENT)
-                comp->state |= JGCOMPS_REDRAW;
+            if(comp->state & JGCOMP_STATE_MOEVENT)
+                comp->state |= JGCOMP_STATE_REDRAW;
         }
         break;
     }
@@ -124,9 +129,8 @@ short JGDispatchEvent(JGCOMPONENT comp, const JGEVENT *event)
     {
         JGEVENT leEvent;
         leEvent.type = extraDispatch;
-        leEvent.x = event->x;
-        leEvent.y = event->y;
-        leEvent.button = event->button;
+        leEvent.mousePos = event->mousePos;
+        leEvent.mouseButton = event->mouseButton;
         leEvent.pressedButton = event->pressedButton;
         JGDispatchEvent(comp, &leEvent);
     }
@@ -137,13 +141,13 @@ short JGDispatchEvent(JGCOMPONENT comp, const JGEVENT *event)
 short JGDispatchEventAndForward(JGCOMPONENT comp, const JGEVENT *event)
 {
     short st = JGDispatchEvent(comp, event);
-    if(comp->state & JGCOMPS_FORWARD)
+    if(comp->state & JGCOMP_STATE_FORWARD)
     {
         int cnt = comp->container->childCnt;
-        JGCOMPONENT chn = comp->container->children;
+        JGCOMPONENT *chn = comp->container->children;
         while(cnt--)
         {
-            st |= JGDispatchEventAndForward(chn, event);
+            st |= JGDispatchEventAndForward(*chn, event);
             chn++;
         }
     }
@@ -152,51 +156,81 @@ short JGDispatchEventAndForward(JGCOMPONENT comp, const JGEVENT *event)
 
 void JGRedrawComponent(JGCOMPONENT comp, JGGRAPHICS g, int flags)
 {
-    if(comp->state & JGCOMPS_REDRAW || (flags & JGRC_FORCE))
+    if(comp->painter != NULL && ((comp->state & JGCOMP_STATE_REDRAW) || (flags & JGRC_FORCE)))
     {
         comp->painter(comp, g);
-        comp->state &= ~JGCOMPS_REDRAW;
+        comp->state &= ~JGCOMP_STATE_REDRAW;
     }
-    if(comp->state & JGCOMPS_FORWARD)
+    if(comp->state & JGCOMP_STATE_FORWARD)
     {
         int cnt = comp->container->childCnt;
-        JGCOMPONENT chn = comp->container->children;
+        JGCOMPONENT *chn = comp->container->children;
         while(cnt--)
         {
-            JGRedrawComponent(chn, g, flags);
+            JGRedrawComponent(*chn, g, flags);
             chn++;
         }
     }
 }
 
-bool JGRectContains(JGCOMPONENT comp, int x, int y)
+void JGAddListener(JGCOMPONENT comp, JGLISTENER listener)
 {
-    return x > comp->x && x < comp->x + comp->width
-        && y > comp->y && y < comp->y + comp->height;
+    comp->listener = realloc(comp->listener, sizeof(JGLISTENER) * (comp->listenerCnt + 1));
+    *(comp->listener + comp->listenerCnt) = listener;
+    comp->listenerCnt++;
 }
 
-bool JGRectInstersects(JGCOMPONENT comp, int x, int y, int w, int h)
+void JGSetBounds(JGCOMPONENT comp, JGRECT rect)
 {
-    return comp->x < x + w && comp->x + comp->width > x
-        && comp->y < y + h && comp->y + comp->height > y;
+    JGSetPos(comp, rect.point);
+    JGSetSize(comp, rect.size);
 }
 
-void JGSetBounds(JGCOMPONENT comp, int x, int y, int w, int h)
+void JGSetPos(JGCOMPONENT comp, JGPOINT pos)
 {
-    comp->x = x;
-    comp->y = y;
-    comp->width = w;
-    comp->height = h;
+    unit_t dx = pos.x - comp->rect.x;
+    unit_t dy = pos.y - comp->rect.y;
+    if(dx || dy)
+    {
+        // update children position
+        if(comp->state & JGCOMP_STATE_LAYOUT)
+        {
+            JGCONTAINER cont = comp->container;
+            int cnt = cont->childCnt;
+            JGCOMPONENT *chn = cont->children;
+            JGCOMPONENT dchn;
+            while(cnt--)
+            {
+                dchn = *chn;
+                JGPOINT p = { dchn->x + dx, dchn->y + dy };
+                JGSetPos(dchn, p);
+                chn++;
+            }
+        }
+        JGEVENT event = { .type = JGEVENT_ID_SIZE, .oldPosX = comp->x, .oldPosY = comp->y, .posX = pos.x, .posY = pos.y };
+        comp->rect.point = pos;
+        comp->state |= JGCOMP_STATE_REDRAW;
+        JGDispatchEvent(comp, &event);
+    }
 }
 
-void JGSetPos(JGCOMPONENT comp, int x, int y)
+void JGSetSize(JGCOMPONENT comp, JGSIZE size)
 {
-    comp->x = x;
-    comp->y = y;
-}
-
-void JGSetSize(JGCOMPONENT comp, int w, int h)
-{
-    comp->width = w;
-    comp->height = h;
+    unit_t dw = size.width - comp->rect.width;
+    unit_t dh = size.height - comp->rect.height;
+    if(dw || dh)
+    {
+        // update layout
+        if((comp->state & JGCOMP_STATE_LAYOUT))
+        {
+            JGCONTAINER cont = comp->container;
+            JGLAYOUT layout;
+            if((layout = cont->layout) != NULL)
+                layout->layoutFunc(layout, cont->children, cont->childCnt, comp->x, comp->y, size.width, size.height);
+        }
+        JGEVENT event = { .type = JGEVENT_ID_SIZE, .oldSizeX = comp->width, .oldSizeY = comp->height, .sizeX = size.width, .sizeY = size.height };
+        comp->rect.size = size;
+        comp->state |= JGCOMP_STATE_REDRAW;
+        JGDispatchEvent(comp, &event);
+    }
 }

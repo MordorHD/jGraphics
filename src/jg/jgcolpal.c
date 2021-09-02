@@ -1,7 +1,7 @@
 #include "jgbase.h"
 
 // implementations from "jgbase.h"
-color_t BrighterColor(color_t color, float factor)
+color_t JGBrighterColor(color_t color, float factor)
 {
     char r = (char) (factor * ((color & 0xFF0000) >> 16));
     char g = (char) (factor * ((color & 0x00FF00) >> 8));

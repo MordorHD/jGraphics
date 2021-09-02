@@ -90,7 +90,7 @@ bool JGRemoveRangeAt(JGTEXT text, int fromIndex, int removeLen)
     return 1;
 }
 
-int JGIndexOf(JGTEXT text, char ch, int fromIndex)
+int JGFindChar(JGTEXT text, char ch, int fromIndex)
 {
     char *str = text->text + fromIndex;
     int len = text->len - fromIndex;

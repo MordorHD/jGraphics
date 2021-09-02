@@ -14,6 +14,11 @@
         app->container->childCnt = 0;
         app->container->children = NULL;
         app->palette = palette;
+        JGIMAGE__ image;
+        image.width = 0;
+        image.height = 0;
+        image.pixels = NULL;
+        app->buffer = JGCreateGraphics(&image, palette);
         return app;
     }
 
@@ -21,6 +26,7 @@
     {
         if(app == NULL)
             return 0;
+        JGDestroyGraphics(app->buffer);
         DestroyWindow(app->root);
         DestroyWindow(app->fullScreen);
         free(app);
@@ -68,9 +74,9 @@
         case WM_XBUTTONDOWN:
         {
             event->type = JGEVENT_ID_MOUSEPRESSED;
-            event->x = GET_X_LPARAM(lParam);
-            event->y = GET_Y_LPARAM(lParam);
-            event->button = LOWORD(wParam);
+            event->mousePos.x = GET_X_LPARAM(lParam);
+            event->mousePos.y = GET_Y_LPARAM(lParam);
+            event->mouseButton = LOWORD(wParam);
             event->pressedButton = msg;
             break;
         }
@@ -80,18 +86,18 @@
         case WM_XBUTTONUP:
         {
             event->type = JGEVENT_ID_MOUSERELEASED;
-            event->x = GET_X_LPARAM(lParam);
-            event->y = GET_Y_LPARAM(lParam);
-            event->button = LOWORD(wParam);
+            event->mousePos.x = GET_X_LPARAM(lParam);
+            event->mousePos.y = GET_Y_LPARAM(lParam);
+            event->mouseButton = LOWORD(wParam);
             event->pressedButton = msg;
             break;
         }
         case WM_MOUSEWHEEL:
         {
             event->type = JGEVENT_ID_MOUSEWHEEL;
-            event->x = GET_X_LPARAM(lParam);
-            event->y = GET_Y_LPARAM(lParam);
-            event->button = LOWORD(wParam);
+            event->mousePos.x = GET_X_LPARAM(lParam);
+            event->mousePos.y = GET_Y_LPARAM(lParam);
+            event->mouseButton = LOWORD(wParam);
             event->deltaWheel = GET_WHEEL_DELTA_WPARAM(wParam);
             break;
         }
@@ -100,11 +106,11 @@
             event->type = JGEVENT_ID_MOUSEMOVED;
             app->pmx = app->mx;
             app->pmy = app->my;
-            event->x = app->mx = GET_X_LPARAM(lParam);
-            event->y = app->my = GET_Y_LPARAM(lParam);
-            event->dx = app->pmx - app->mx;
-            event->dy = app->pmy - app->my;
-            event->button = LOWORD(wParam);
+            event->mousePos.x = app->mx = GET_X_LPARAM(lParam);
+            event->mousePos.y = app->my = GET_Y_LPARAM(lParam);
+            event->dx = app->mx - app->pmx;
+            event->dy = app->my - app->pmy;
+            event->mouseButton = LOWORD(wParam);
             break;
         }
         default:
@@ -151,17 +157,15 @@
                     continue;
                 // forward event to all children
                 int cnt = app->container->childCnt;
-                JGCOMPONENT chn = app->container->children;
+                JGCOMPONENT *chn = app->container->children;
                 short st = 0;
                 while(cnt--)
                 {
-                    if(event.type >= JGEVENT_FORWARD_MIN && event.type <= JGEVENT_FORWARD_MAX)
-                        st |= JGDispatchEventAndForward(chn, &event);
-                    else
-                        st |= JGDispatchEvent(chn, &event);
+                    st |= event.type >= JGEVENT_FORWARD_MIN && event.type <= JGEVENT_FORWARD_MAX ? JGDispatchEventAndForward(*chn, &event) :
+                                                                                                   JGDispatchEvent(*chn, &event);
                     chn++;
                 }
-                if(st & JGCOMPS_REDRAW)
+                if(st & JGCOMP_STATE_REDRAW)
                     RedrawWindow(app->root, NULL, NULL, RDW_INVALIDATE);
             }
         }
@@ -177,37 +181,53 @@
             return DefWindowProc(hWnd, msg, wParam, lParam);
         switch(msg)
         {
+        case WM_SIZE:
+        {
+            JGCONTAINER cont = app->container;
+            JGLAYOUT layout = cont->layout;
+            JGGRAPHICS buffer = app->buffer;
+            RECT r;
+            GetClientRect(hWnd, &r);
+            buffer->image.width = r.right;
+            buffer->image.height = r.bottom;
+            buffer->image.pixels = realloc(buffer->image.pixels, sizeof(int) * (r.right * r.bottom));
+            if(layout == NULL)
+                break;
+            layout->layoutFunc(layout, cont->children, cont->childCnt, 0, 0, r.right, r.bottom);
+            break;
+        }
         case WM_ERASEBKGND:
             return 1;
         case WM_PAINT:
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            HBRUSH hbrOld = SelectObject(hdc, GetStockBrush(DC_BRUSH));
-            HPEN   hpnOld = SelectObject(hdc, GetStockPen(DC_PEN));
-            int    bkmOld = SetBkMode(hdc, TRANSPARENT);
 
-            JGCOLORPALETTE palette = app->palette;
-            SetDCBrushColor(hdc, palette->bgC0Color);
-            SetDCPenColor  (hdc, palette->fgColor);
-            SetTextColor   (hdc, palette->txColor);
+            JGGRAPHICS g = app->buffer;
+            JGSetFillColor(g, app->palette->bgC0Color);
+            JGSetStrokeColor(g, app->palette->fgColor);
 
-            JGGRAPHICS g = malloc(sizeof(JGGRAPHICS__));
-            g->dc = hdc;
-            g->palette = palette;
             int cnt = app->container->childCnt;
-            JGCOMPONENT chn = app->container->children;
+            JGCOMPONENT *chn = app->container->children;
             while(cnt--)
             {
-                if(JGRectInstersects(chn, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right - ps.rcPaint.left, ps.rcPaint.bottom - ps.rcPaint.top))
-                    JGRedrawComponent(chn, g, 0);
+                JGRECT rect = { .x = ps.rcPaint.left, .y = ps.rcPaint.top, .width = ps.rcPaint.right - ps.rcPaint.left, .height = ps.rcPaint.bottom - ps.rcPaint.top };
+                if(JGRectsInstersect(&(*chn)->rect, &rect))
+                    JGRedrawComponent(*chn, g, 0);
                 chn++;
             }
-            free(g);
 
-            SetBkMode   (hdc, bkmOld);
-            SelectObject(hdc, hpnOld);
-            SelectObject(hdc, hbrOld);
+            JGIMAGE__ image = g->image;
+            HBITMAP hbmp = CreateBitmap(image.width, image.height, 1, sizeof(color_t) * 8, image.pixels);
+
+            HDC dc = CreateCompatibleDC(hdc);
+            HBITMAP oldBmp = SelectObject(dc, hbmp);
+            BitBlt(hdc, 0, 0, image.width, image.height, dc, 0, 0, SRCCOPY);
+            SelectObject(dc, oldBmp);
+            DeleteDC(dc);
+
+            DeleteObject(hbmp);
+
             EndPaint(hWnd, &ps);
             break;
         }

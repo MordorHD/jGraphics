@@ -1,50 +1,95 @@
 #ifndef __JGGRAPHICS_H__
 #define __JGGRAPHICS_H__
 
+#include "jggeom.h"
+
 // forward declaration to prevent weird nesting
 struct ApplicationTag;
 struct ColorPaletteTag;
 
-#ifdef __WIN32 // Windows
+#include "typedefs.h"
 
-    #include <windows.h>
-    #include "typedefs.h"
+typedef struct ColorPaletteTag {
+    color_t bgC0Color;
+    color_t bgB0Color;
+    color_t bgB1Color;
+    color_t fgColor;
+    color_t txColor;
+} JGCOLORPALETTE__, *JGCOLORPALETTE;
 
-    typedef struct GraphicsTag {
-        HDC dc;
-        struct ColorPaletteTag *palette;
-        int transformMatrix[7];
-    } JGGRAPHICS__, *JGGRAPHICS;
+#define JGCCP_NONE 0x0
+#define JGCCP_SKY 0x1
 
-    /**
-     * Creates a JGGRAPHICS instance.
-     *
-     * @param struct ApplicationTag* - JGAPPLICATION, cannot be null
-     * @return An allocated JGGRAPHICS instance
-     **/
-    JGGRAPHICS JGCreateGraphics(struct ApplicationTag*);
+/**
+ * Creates a color palette with given style (prefix JGCCP_).
+ *
+ * @param int - Style
+ * @return Allocated JGCOLORPALETTE instance
+ **/
+JGCOLORPALETTE JGCreateColorPalette(int);
 
-    /**
-     * Frees all resources associated with the given JGTEXT instance.
-     *
-     * @param struct ApplicationTag* - JGAPPLICATION, cannot be null
-     * @param JGGRAPHICS             - JGGRAPHICS, can be null
-     * @return If the parameter was null
-     **/
-    bool JGDestroyGraphics(struct ApplicationTag*, JGGRAPHICS);
+/**
+ * Frees a JGCOLORPALETTE
+ *
+ * @param JGCOLORPALETTE - Object to free
+ * @return If given parameter is non null
+ **/
+bool JGDestroyColorPalette(JGCOLORPALETTE);
 
-    // testing
-    #define JGSetFillColor(g, color) SetDCBrushColor((g)->dc, (COLORREF) (color))
-    #define JGSetStrokeColor(g, color) SetDCPenColor((g)->dc, (COLORREF) (color))
-    #define JGFillRect(g, x, y, w, h) { RECT _R_ = { x, y, x + w, y + h}; FillRect((g)->dc, &_R_, GetStockObject(DC_BRUSH)); }
-    #define JGSetDrawTextColor(g, color) SetTextColor((g)->dc, (COLORREF) (color))
-    #define JGDrawText(g, text, len, x, y) { RECT _R_ = { x, y, 0, 0 }; DrawText((g)->dc, text, len, &_R_, DT_NOPREFIX | DT_NOCLIP | DT_LEFT | DT_TOP | DT_SINGLELINE); }
-    #define JGDrawCenteredText(g, text, len, x, y, w, h) { RECT _R_ = { x, y, (x) + (w), (y) + (h) }; DrawText((g)->dc, text, len, &_R_, DT_NOPREFIX | DT_NOCLIP | DT_VCENTER | DT_CENTER | DT_SINGLELINE); }
+/**
+ * Brightens or darkens a given color.
+ *
+ * @param color_t - Color to brighten
+ * @param float   - Brightening factor (color gets darker if this is less than 0)
+ * @return Brightened color
+ **/
+color_t JGBrighterColor(color_t, float);
 
-#elif defined(__unix__) // Unix systems
+typedef struct ImageTag {
+    color_t *pixels;
+    unit_t width;
+    unit_t height;
+} JGIMAGE__, *JGIMAGE;
 
-#elif // Mac OS
+typedef struct GraphicsTag {
+    struct ColorPaletteTag *palette;
+    unitf_t tm[7];
+    JGIMAGE__ image;
+    color_t fill;
+    color_t stroke;
+} JGGRAPHICS__, *JGGRAPHICS;
 
-#endif
+/**
+ * Creates a JGGRAPHICS instance.
+ *
+ * @param struct ApplicationTag* - JGAPPLICATION, cannot be null
+ * @return An allocated JGGRAPHICS instance
+ **/
+JGGRAPHICS JGCreateGraphics(JGIMAGE, struct ColorPaletteTag*);
+
+/**
+ * Frees all resources associated with the given JGTEXT instance.
+ *
+ * @param struct ApplicationTag* - JGAPPLICATION
+ * @param JGGRAPHICS             - JGGRAPHICS
+ * @return If the parameter JGGRAPHICS was null
+ **/
+bool JGDestroyGraphics(JGGRAPHICS);
+
+void JGCopyImage(JGIMAGE, unit_t, unit_t, const JGIMAGE);
+
+void JGFillRect(JGGRAPHICS, CLP(JGRECT));
+void JGDrawRect(JGGRAPHICS, unit_t, unit_t, unit_t, unit_t);
+
+void JGFillEllipse(JGGRAPHICS, unit_t, unit_t, unit_t, unit_t);
+void JGDrawEllipse(JGGRAPHICS, unit_t, unit_t, unit_t, unit_t);
+
+void JGFillCircle(JGGRAPHICS, unit_t, unit_t, unit_t);
+void JGDrawCircle(JGGRAPHICS, unit_t, unit_t, unit_t);
+
+void JGDrawLine(JGGRAPHICS, unit_t, unit_t, unit_t, unit_t);
+
+#define JGSetFillColor(g, color) ((g)->fill=color)
+#define JGSetStrokeColor(g, color) ((g)->stroke=color)
 
 #endif // __JGGRAPHICS_H__
