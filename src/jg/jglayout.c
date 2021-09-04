@@ -1,16 +1,10 @@
 #include "jglayout.h"
 #include "jgbase.h"
 
-JGLAYOUT JGCreateLayout(int type, JGLAYOUTCOMPONENTS layoutFunc)
-{
-    JGLAYOUT layout = malloc(sizeof(JGLAYOUT__));
-    layout->type = type;
-    layout->layoutFunc = layoutFunc;
-    return layout;
-}
-
 static void JGFlowLayoutFunc(JGLAYOUT layout, JGCOMPONENT *chn, int cnt, unit_t x, unit_t y, unit_t w, unit_t h)
 {
+    if(cnt == 0)
+        return;
     unit_t cw = w / cnt;
     JGCOMPONENT dchn;
     JGRECT rect = {
@@ -35,13 +29,10 @@ static void JGFlowLayoutFunc(JGLAYOUT layout, JGCOMPONENT *chn, int cnt, unit_t 
     }
 }
 
-JGLAYOUT JGCreateFlowLayout(void)
-{
-    return JGCreateLayout(JGLAYOUTT_FLOW, JGFlowLayoutFunc);
-}
-
 static void JGStackLayoutFunc(JGLAYOUT layout, JGCOMPONENT *chn, int cnt, unit_t x, unit_t y, unit_t w, unit_t h)
 {
+    if(cnt == 0)
+        return;
     unit_t ch = h / cnt;
     JGCOMPONENT dchn;
     JGRECT rect = {
@@ -66,13 +57,19 @@ static void JGStackLayoutFunc(JGLAYOUT layout, JGCOMPONENT *chn, int cnt, unit_t
     }
 }
 
-JGLAYOUT JGCreateStackLayout(void)
+bool JGGetStockLayout(JGLAYOUT *layout, int type)
 {
-    return JGCreateLayout(JGLAYOUTT_STACK, JGStackLayoutFunc);
-}
-
-bool JGDestroyLayout(JGLAYOUT layout)
-{
-    free(layout);
+    layout->type = type;
+    switch(type)
+    {
+    case JGLAYOUT_FLOW:
+        layout->layoutFunc = JGFlowLayoutFunc;
+        break;
+    case JGLAYOUT_STACK:
+        layout->layoutFunc = JGStackLayoutFunc;
+        break;
+    default:
+        return 0;
+    }
     return 1;
 }

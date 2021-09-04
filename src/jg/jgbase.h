@@ -79,17 +79,7 @@
         clock_t tickDelay;
     } JGCLOCK__, *JGCLOCK;
 
-    #define JG_INIT { WNDCLASS wc = {0}; \
-                    wc.lpfnWndProc = JGApplicationProc__; \
-                    wc.lpszClassName = "JG_APP_WINDOW"; \
-                    wc.hbrBackground = GetStockBrush(WHITE_BRUSH); \
-                    wc.hCursor = LoadCursor(NULL, IDC_ARROW); \
-                    RegisterClass(&wc); \
-                    wc.lpfnWndProc = JGFullScreenProc__; \
-                    wc.lpszClassName = "JG_APP_FULL_SCREEN_WINDOW"; \
-                    RegisterClass(&wc); }
-
-    #define JG_DISPOSE UnregisterClass("JG_APP_WINDOW", NULL); UnregisterClass("JG_APP_FULL_SCREEN_WINDOW", NULL)
+    void JGInit(int, char**);
 
 #elif defined(__unix__) // unix systems
     #include <X11/X.h>
@@ -114,7 +104,7 @@
 #define JGIsKeyUp(app, vk) (!((app)->keyStates[vk] & 0x2))
 #define JGIsKeyToggled(app, vk) ((app)->keyStates[vk] & 0x1)
 
-JGAPPLICATION JGCreateApplication(JGCOLORPALETTE);
+JGAPPLICATION JGCreateApplication(void);
 bool JGDestroyApplication(JGAPPLICATION);
 
 #define JGRA_WAIT 0x0

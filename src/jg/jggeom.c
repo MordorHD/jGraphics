@@ -85,69 +85,92 @@ bool JGLineIntersection(CLP(JGLINE) line1, CLP(JGLINE) line2, JGPOINT *pointDest
         return 0;
 }
 
-/*
-bool JGLineRectIntersection(CLP(JGLINE) line, CLP(JGRECT) rect, JGLINE* lineDst)
-{
-    JGPOINT unit_tersection;
-    unit_t min_x = rect->x;
-    unit_t min_y = rect->y;
-    unit_t max_x = min_x + rect->width;
-    unit_t max_y = min_y + rect->height;
+#define INSIDE 0x0
+#define LEFT 0x1
+#define RIGHT 0x2
+#define TOP 0x4
+#define BOTTOM 0x8
 
-    if(line->x2 < min_x)
+static char ComputeCode(CLP(JGRECT) rect, unit_t x, unit_t y)
+{
+    char code = INSIDE;
+
+    if(x < rect->x)
+        code |= LEFT;
+    else if(x > rect->x + rect->width)
+        code |= RIGHT;
+    if(y < rect->y)
+        code |= BOTTOM;
+    else if(y > rect->y + rect->height)
+        code |= TOP;
+
+    return code;
+}
+
+bool JGClipLineRect(CLP(JGLINE) src, CLP(JGRECT) rect, JGLINE *dest)
+{
+    unit_t x1 = src->x1;
+    unit_t y1 = src->y1;
+    unit_t x2 = src->x2;
+    unit_t y2 = src->y2;
+    char code1 = ComputeCode(rect, x1, y1);
+    char code2 = ComputeCode(rect, x2, y2);
+    char code_out;
+    unit_t x, y;
+    unit_t side;
+
+    while(1)
     {
-        if(line->y2 > min_y && line->y2 < max_y)
+        if(!(code1 | code2))
         {
-            JGLINE line2 = { min_x, min_y, min_x, max_y};
-            return JGLineIntersection(line, &line2);
-        }
-        else if(line->y2 < min_y)
-        {
-            JGLINE tl = { min_x, min_y, max_x, min_y};
-            JGLINE tl = { min_x, min_x, min_x, max_y};
-            if(!JGLineIntersection(line, &line2, &lineDst->pounit_t1) && !JGLineIntersection(line, new Vector2(min_x, min_y), new Vector2(min_x, max_y))
-               return 0;
+            dest->x1 = x1;
+            dest->y1 = y1;
+            dest->x2 = x2;
+            dest->y2 = y2;
             return 1;
         }
-        else
-        {
-            unit_tersection = JGLineIntersection(line, new Vector2(min_x, max_y), new Vector2(max_x, max_y));
-            if(unit_tersection == null)
-                unit_tersection = JGLineIntersection(line, new Vector2(min_x, min_y), new Vector2(min_x, max_y));
-            return unit_tersection;
-        }
-    }
-    else if(line->x2 > max_x)
-    {
-        if(line->y2 > min_y &&line->y2 < max_y)
-        {
-            return JGLineIntersection(line, new Vector2(max_x, min_y), new Vector2(max_x, max_y));
-        }
-        else if(line->y2 < min_y)
-        {
-            unit_tersection = JGLineIntersection(line, new Vector2(min_x, min_y), new Vector2(max_x, min_y));
-            if (unit_tersection == null)
-                unit_tersection = JGLineIntersection(line, new Vector2(max_x, min_y), new Vector2(max_x, max_y));
-            return unit_tersection;
-        }
-        else
-        {
-            unit_tersection = JGLineIntersection(line, new Vector2(min_x, max_y), new Vector2(max_x, max_y));
-            if (unit_tersection == null)
-                unit_tersection = JGLineIntersection(line, new Vector2(max_x, min_y), new Vector2(max_x, max_y));
-            return unit_tersection;
-        }
-    }
-    else
-    {
-        if(p2->y < min_y)
-            return LSegsIntersectionPounit_t(line, new Vector2(min_x, min_y), new Vector2(max_x, min_y));
-        if(p2->y > max_y)
-            return LSegsIntersectionPounit_t(line, new Vector2(min_x, max_y), new Vector2(max_x, max_y));
-    }
-    return null;
+        if(code1 & code2)
+            return 0;
 
-}*/
+        code_out = code1 ? code1 : code2;
+        if(code_out & TOP)
+        {
+            side = rect->y + rect->height;
+            x = x1 + (x2 - x1) * (side - y1) / (y2 - y1);
+            y = side;
+        }
+        else if(code_out & BOTTOM)
+        {
+            side = rect->y;
+            x = x1 + (x2 - x1) * (side - y1) / (y2 - y1);
+            y = side;
+        }
+        else if(code_out & RIGHT)
+        {
+            side = rect->x + rect->width;
+            y = y1 + (y2 - y1) * (side - x1) / (x2 - x1);
+            x = side;
+        }
+        else if(code_out & LEFT)
+        {
+            side = rect->x;
+            y = y1 + (y2 - y1) * (side - x1) / (x2 - x1);
+            x = side;
+        }
+        if(code1)
+        {
+            x1 = x;
+            y1 = y;
+            code1 = ComputeCode(rect, x1, y1);
+        }
+        else
+        {
+            x2 = x;
+            y2 = y;
+            code2 = ComputeCode(rect, x2, y2);
+        }
+    }
+}
 
 void JGVecAddf(VECTOR2F *vec, unitf_t x, unitf_t y)
 {

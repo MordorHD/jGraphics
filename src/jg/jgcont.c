@@ -13,23 +13,23 @@ static void JGContainerPainter(JGCOMPONENT comp, JGGRAPHICS g)
 
 JGCOMPONENT JGCreateContainer(void)
 {
-    JGCONTAINER cont = malloc(sizeof(JGCONTAINER__));
-    cont->children = NULL;
-    cont->childCnt = 0;
-    cont->layout = NULL;
-    return JGCreateComponent(JGCOMP_TYPE_CONTAINER, cont, JGCOMP_STATE_FORWARD | JGCOMP_STATE_LAYOUT, NULL, JGContainerPainter);
+    JGCOMPONENT comp = JGCreateComponent(JGCOMP_TYPE_CONTAINER, JGCOMP_STATE_FORWARD | JGCOMP_STATE_LAYOUT, NULL, JGContainerPainter);
+    comp->container.children = NULL;
+    comp->container.childCnt = 0;
+    comp->container.layout.type = 0;
+    return comp;
 }
 
 // returns new location of added component
-void JGAddChild0(JGCONTAINER cont, JGCOMPONENT comp)
+void JGAddChild0(JGCONTAINER *cont, JGCOMPONENT comp)
 {
     int cnt = cont->childCnt++;
     cont->children = realloc(cont->children, (cnt + 1) * sizeof(JGCOMPONENT));
-    comp->parent = cont;
+    comp->parent = cont->children;
     *(cont->children + cnt) = comp;
 }
 
-bool JGRemoveChild0(JGCONTAINER cont, int index)
+bool JGRemoveChild0(JGCONTAINER *cont, int index)
 {
     if(cont->childCnt == 0)
         return 0;
@@ -38,7 +38,7 @@ bool JGRemoveChild0(JGCONTAINER cont, int index)
     return 1;
 }
 
-int JGIndexOfChild0(JGCONTAINER cont, JGCOMPONENT comp)
+int JGIndexOfChild0(JGCONTAINER *cont, JGCOMPONENT comp)
 {
     int cnt = cont->childCnt;
     JGCOMPONENT *chn = cont->children;

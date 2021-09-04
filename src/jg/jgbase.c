@@ -2,23 +2,34 @@
 
 #ifdef __WIN32
 
+    void JGInit(int argc, char **argv)
+    {
+        WNDCLASS wc = {0};
+        wc.lpfnWndProc = JGApplicationProc__;
+        wc.lpszClassName = "JG_APP_WINDOW";
+        wc.hbrBackground = GetStockBrush(WHITE_BRUSH);
+        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+        RegisterClass(&wc);
+        wc.lpfnWndProc = JGFullScreenProc__;
+        wc.lpszClassName = "JG_APP_FULL_SCREEN_WINDOW";
+        RegisterClass(&wc);
+    }
+
     ///////////////////////////////
     //        APPLICATION        //
     ///////////////////////////////
-    JGAPPLICATION JGCreateApplication(JGCOLORPALETTE palette)
+    JGAPPLICATION JGCreateApplication(void)
     {
         JGAPPLICATION app = malloc(sizeof(JGAPPLICATION__));
         app->root = CreateWindow("JG_APP_WINDOW", "Title", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, GetModuleHandle(NULL), app);
         app->fullScreen = NULL;
-        app->container = malloc(sizeof(JGCONTAINER__));
-        app->container->childCnt = 0;
-        app->container->children = NULL;
-        app->palette = palette;
-        JGIMAGE__ image;
-        image.width = 0;
-        image.height = 0;
-        image.pixels = NULL;
-        app->buffer = JGCreateGraphics(&image, palette);
+        app->container.childCnt = 0;
+        app->container.children = NULL;
+        JGCOLORPALETTE pal;
+        JGGetStockPalette(&pal, JGPALETTE_STYLE_SKY);
+        app->palette = pal;
+        JGIMAGE image = {0};
+        app->buffer = JGCreateGraphics(&image, &pal);
         return app;
     }
 
@@ -156,8 +167,8 @@
                 if(!event.type)
                     continue;
                 // forward event to all children
-                int cnt = app->container->childCnt;
-                JGCOMPONENT *chn = app->container->children;
+                int cnt = app->container.childCnt;
+                JGCOMPONENT *chn = app->container.children;
                 short st = 0;
                 while(cnt--)
                 {
@@ -184,16 +195,16 @@
         case WM_SIZE:
         {
             JGCONTAINER cont = app->container;
-            JGLAYOUT layout = cont->layout;
+            JGLAYOUT layout = cont.layout;
             JGGRAPHICS buffer = app->buffer;
             RECT r;
             GetClientRect(hWnd, &r);
             buffer->image.width = r.right;
             buffer->image.height = r.bottom;
             buffer->image.pixels = realloc(buffer->image.pixels, sizeof(int) * (r.right * r.bottom));
-            if(layout == NULL)
+            if(layout.type == 0)
                 break;
-            layout->layoutFunc(layout, cont->children, cont->childCnt, 0, 0, r.right, r.bottom);
+            layout.layoutFunc(layout, cont.children, cont.childCnt, 0, 0, r.right, r.bottom);
             break;
         }
         case WM_ERASEBKGND:
@@ -204,11 +215,11 @@
             HDC hdc = BeginPaint(hWnd, &ps);
 
             JGGRAPHICS g = app->buffer;
-            JGSetFillColor(g, app->palette->bgC0Color);
-            JGSetStrokeColor(g, app->palette->fgColor);
+            JGSetFillColor(g, app->palette.bgC0Color);
+            JGSetStrokeColor(g, app->palette.fgColor);
 
-            int cnt = app->container->childCnt;
-            JGCOMPONENT *chn = app->container->children;
+            int cnt = app->container.childCnt;
+            JGCOMPONENT *chn = app->container.children;
             while(cnt--)
             {
                 JGRECT rect = { .x = ps.rcPaint.left, .y = ps.rcPaint.top, .width = ps.rcPaint.right - ps.rcPaint.left, .height = ps.rcPaint.bottom - ps.rcPaint.top };
@@ -217,7 +228,7 @@
                 chn++;
             }
 
-            JGIMAGE__ image = g->image;
+            JGIMAGE image = g->image;
             HBITMAP hbmp = CreateBitmap(image.width, image.height, 1, sizeof(color_t) * 8, image.pixels);
 
             HDC dc = CreateCompatibleDC(hdc);

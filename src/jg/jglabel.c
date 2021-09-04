@@ -14,10 +14,12 @@ static void JGLabelPainter(JGCOMPONENT comp, JGGRAPHICS g)
     HFONT font = CreateFont(comp->height, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_SWISS, "Arial");
     HFONT oldFont = SelectFont(g->dc, font);
     JGDrawCenteredText(g, text->text, text->len, comp->x, comp->y, comp->width, comp->height);
-    SelectObject(g->dc, oldFont);*/ // https://steamcommunity.com/profiles/76561198339191329/
+    SelectObject(g->dc, oldFont);*/
 }
 
 JGCOMPONENT JGCreateLabel(string_t text)
 {
-    return JGCreateComponent(JGCOMP_TYPE_BUTTON, JGCreateText(text), 0, NULL, JGLabelPainter);
+    JGCOMPONENT comp = JGCreateComponent(JGCOMP_TYPE_BUTTON, 0, NULL, JGLabelPainter);
+    JGSetString(&comp->text, text);
+    return comp;
 }

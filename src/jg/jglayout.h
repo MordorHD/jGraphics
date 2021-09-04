@@ -8,17 +8,17 @@ struct ComponentTag;
 struct ContainerTag;
 struct LayoutTag;
 
-typedef void (*JGLAYOUTCOMPONENTS)(struct LayoutTag*, struct ComponentTag**, int, unit_t, unit_t, unit_t, unit_t);
+typedef void (*JGLAYOUTCOMPONENTS)(struct LayoutTag, struct ComponentTag**, int, unit_t, unit_t, unit_t, unit_t);
 
 // these layouts do not get an extra struct because they just have the layoutFunc
-#define JGLAYOUTT_FLOW 0x1
-#define JGLAYOUTT_STACK 0x2
+#define JGLAYOUT_FLOW 0x1
+#define JGLAYOUT_STACK 0x2
 
-#define JGLAYOUTT_GRIDBAG 0x3
+#define JGLAYOUT_GRIDBAG 0x3
 
 typedef struct GridBagLayoutTag {
     JGLAYOUTCOMPONENTS layoutFunc;
-} JGGRIDBAGLAYOUT__, *JGGRIDBAGLAYOUT;
+} JGGRIDBAGLAYOUT;
 
 
 // a layout positions components of a container in a specific way
@@ -29,11 +29,8 @@ typedef struct LayoutTag {
         JGLAYOUTCOMPONENTS layoutFunc;
         JGGRIDBAGLAYOUT gbg;
     };
-} JGLAYOUT__, *JGLAYOUT;
+} JGLAYOUT;
 
-JGLAYOUT JGCreateLayout(int, JGLAYOUTCOMPONENTS);
-JGLAYOUT JGCreateFlowLayout(void);
-JGLAYOUT JGCreateStackLayout(void);
-bool JGDestroyLayout(JGLAYOUT);
+bool JGGetStockLayout(JGLAYOUT*, int);
 
 #endif // __JGLAYOUT_H__

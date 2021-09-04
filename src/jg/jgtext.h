@@ -21,23 +21,7 @@ typedef struct TextTag {
     char *text;
     int len;
     int cap;
-} JGTEXT__, *JGTEXT;
-
-/**
- * Creates a JGTEXT instance, should be paired with JGDestroyText.
- *
- * @param string_t - Initial text
- * @return An allocated JGTEXT instance
- **/
-JGTEXT JGCreateText(string_t);
-
-/**
- * Frees all resources associated with the given JGTEXT instance.
- *
- * @param JGTEXT - JGTEXT instance
- * @return If the parameter was null
- **/
-bool JGDestroyText(JGTEXT);
+} JGTEXT;
 
 /**
  * Fills given buffer with the current text of given JGTEXT instance.
@@ -47,7 +31,7 @@ bool JGDestroyText(JGTEXT);
  * @param int            - Buffer length
  * @return Given buffer
  **/
-char *JGGetString(JGTEXT, char *restrict, int);
+char *JGGetString(JGTEXT*, char *restrict, int);
 
 /**
  * Sets the text of given JGTEXT instance to given string.
@@ -56,7 +40,7 @@ char *JGGetString(JGTEXT, char *restrict, int);
  * @param string_t - String to set the text to
  * @return If the text was cleared
  **/
-bool JGSetString(JGTEXT, string_t);
+bool JGSetString(JGTEXT*, string_t);
 
 /**
  * Appends given JGTEXT instance with given string.
@@ -65,7 +49,7 @@ bool JGSetString(JGTEXT, string_t);
  * @param string_t - String to append
  * @return If the text content changed
  **/
-bool JGAppendString(JGTEXT, string_t);
+bool JGAppendString(JGTEXT*, string_t);
 
 /**
  * Appends given JGTEXT instance with given string at given index.
@@ -75,7 +59,7 @@ bool JGAppendString(JGTEXT, string_t);
  * @param int      - Index of insertion
  * @return If the text content changed
  **/
-bool JGInsertString(JGTEXT, string_t, int);
+bool JGInsertString(JGTEXT*, string_t, int);
 
 #define JGInBounds(text, index) (index>=0&&index<(text)->len)
 
@@ -86,7 +70,7 @@ bool JGInsertString(JGTEXT, string_t, int);
  * @param int    - Index to remove, must be in bounds, use macro JGInBounds for a bounds check
  * @return If the text content changed
  **/
-bool JGRemoveCharAt(JGTEXT, int);
+bool JGRemoveCharAt(JGTEXT*, int);
 
 /**
  * Removes a range of given length, starting from given index, from given JGTEXT instance.
@@ -97,7 +81,7 @@ bool JGRemoveCharAt(JGTEXT, int);
  * @param int    - Amount to remove
  * @return If the text content changed
  **/
-bool JGRemoveRangeAt(JGTEXT, int, int);
+bool JGRemoveRangeAt(JGTEXT*, int, int);
 
 /**
  * Finds given char inside of the JGTEXT instance.
@@ -108,7 +92,7 @@ bool JGRemoveRangeAt(JGTEXT, int, int);
  * @param int    - Index to search from
  * @return Index of given char if found, otherwise -1
  **/
-int JGFindChar(JGTEXT, char, int);
+int JGFindChar(JGTEXT*, char, int);
 
 /**
  * Finds given string inside of the JGTEXT instance.
@@ -119,7 +103,7 @@ int JGFindChar(JGTEXT, char, int);
  * @param int               - Index to search from
  * @return Index of the beginning of the string if found, otherwise -1
  **/
-int JGFindString(JGTEXT, string_t restrict, int);
+int JGFindString(JGTEXT*, string_t restrict, int);
 
 /**
  * Replaces found string with given string, the given strings must be unrelated to each other (restrict).
@@ -130,6 +114,6 @@ int JGFindString(JGTEXT, string_t restrict, int);
  * @param string_t restrict - String to replace
  * @return Index of the beginning of the string if found, otherwise -1
  **/
-int JGReplaceString(JGTEXT, string_t restrict, int, string_t restrict);
+int JGReplaceString(JGTEXT*, string_t restrict, int, string_t restrict);
 
 #endif // __JGTEXT_H__

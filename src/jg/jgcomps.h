@@ -21,28 +21,28 @@ typedef struct ContainerTag {
     struct ComponentTag **children;
     int childCnt;
     JGLAYOUT layout;
-} JGCONTAINER__, *JGCONTAINER;
+} JGCONTAINER;
 
 struct ComponentTag *JGCreateContainer(void);
 // zero naming convention because functions take in a container, but you usually want to say
 // JGCOMPONENT comp = JGCreateContainer();
 // JGAddChild(comp, child); instead of JGAddChild(comp->container, child);
 // matching macros are below
-void JGAddChild0(JGCONTAINER, struct ComponentTag*);
-bool JGRemoveChild0(JGCONTAINER, int);
-int JGIndexOfChild0(JGCONTAINER, struct ComponentTag*);
+void JGAddChild0(JGCONTAINER*, struct ComponentTag*);
+bool JGRemoveChild0(JGCONTAINER*, int);
+int JGIndexOfChild0(JGCONTAINER*, struct ComponentTag*);
 
-#define JGAddChild(parent, child) JGAddChild0((parent)->container, child)
-#define JGRemoveChild(parent, index) JGRemoveChild0((parent)->container, index)
-#define JGIndexOfChild(parent, child) JGIndexOfChild0((parent)->container, child)
-#define JGContainsChild(parent, child) (JGIndexOfChild0((parent)->container, child)!=-1)
+#define JGAddChild(parent, child) JGAddChild0(&(parent)->container, child)
+#define JGRemoveChild(parent, index) JGRemoveChild0(&(parent)->container, index)
+#define JGIndexOfChild(parent, child) JGIndexOfChild0(&(parent)->container, child)
+#define JGContainsChild(parent, child) (JGIndexOfChild0(&(parent)->container, child)!=-1)
 
-#define JGSetLayout(comp, layout_) ((comp)->container->layout=layout_)
+#define JGSetLayout(comp, layout_) ((comp)->container.layout=layout_)
 #define JGRelayout(comp) (comp)->layout\
     { JGCONTAINER cont_macro_ = (comp)->container; \
-      JGLAYOUT layout_macro_ = cont_macro_->layout; \
+      JGLAYOUT layout_macro_ = cont_macro_.layout; \
       if(layout_macro_ != NULL) \
-          layout_macro_->layoutFunc(layout_macro_, cont_macro_->children, cont_macro_->childCnt, (comp)->x, (comp)->y, (comp)->width, (comp)->height); }
+          layout_macro_.layoutFunc(layout_macro_, cont_macro_.children, cont_macro_.childCnt, (comp)->x, (comp)->y, (comp)->width, (comp)->height); }
 
 #define JGCOMP_TYPE_BUTTON 0x2
 // no struct needed, only uses text
@@ -57,7 +57,7 @@ typedef struct SliderTag {
     int minValue;
     int value;
     int maxValue;
-} JGSLIDER__, *JGSLIDER;
+} JGSLIDER;
 
 struct ComponentTag *JGCreateSlider(int, int, int);
 
@@ -69,7 +69,7 @@ struct ComponentTag *JGCreateSlider(int, int, int);
 typedef struct CanvasTag {
     JGGRAPHICS buffer;
     JGPAINTER painter;
-} JGCANVAS__, *JGCANVAS;
+} JGCANVAS;
 
 struct ComponentTag *JGCreateCanvas(bool, JGPAINTER);
 
@@ -126,7 +126,8 @@ typedef struct ComponentTag {
     // Bit 12 - If this components size should get affected by a layout
     // Bit 13 - 16 - Base component defined
     short state;
-    JGCONTAINER parent;
+    // all children from the parent
+    struct ComponentTag **parent;
     union {
         JGRECT rect;
         struct {
@@ -136,9 +137,12 @@ typedef struct ComponentTag {
             unit_t height;
         };
     };
+    // listeners
     JGLISTENER *listener;
     int listenerCnt;
+    // paint procedure of this component
     JGPAINTER painter;
+    // base of this component
     union {
         JGTEXT text;
         JGCONTAINER container;
@@ -155,7 +159,7 @@ typedef struct ComponentTag {
     };
 } JGCOMPONENT__, *JGCOMPONENT;
 
-JGCOMPONENT JGCreateComponent(int, void*, int, JGLISTENER, JGPAINTER);
+JGCOMPONENT JGCreateComponent(int, int, JGLISTENER, JGPAINTER);
 
 short JGDispatchEvent(JGCOMPONENT, const JGEVENT*);
 short JGDispatchEventAndForward(JGCOMPONENT, const JGEVENT*);

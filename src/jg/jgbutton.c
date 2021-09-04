@@ -9,11 +9,12 @@ static void JGButtonPainter(JGCOMPONENT comp, JGGRAPHICS g)
 {
     if(!(comp->state & JGCOMP_STATE_NOTDRAWBG))
     {
+        JGCOLORPALETTE pal = g->palette;
         color_t old = comp->state & JGCOMP_STATE_PRESSED ?
-                          (comp->state & JGCOMP_STATE_MOUSEIN ? JGSetFillColor(g, g->palette->bgB1Color) :
-                                                           JGSetFillColor(g, g->palette->bgB0Color)) :
-                      comp->state & JGCOMP_STATE_MOUSEIN ? JGSetFillColor(g, g->palette->fgColor) :
-                                                      JGSetFillColor(g, g->palette->bgB0Color);
+                          (comp->state & JGCOMP_STATE_MOUSEIN ? JGSetFillColor(g, pal.bgB1Color) :
+                                                           JGSetFillColor(g, pal.bgB0Color)) :
+                      comp->state & JGCOMP_STATE_MOUSEIN ? JGSetFillColor(g, pal.fgColor) :
+                                                    JGSetFillColor(g, pal.bgB0Color);
         JGFillRect(g, &comp->rect);
         JGSetFillColor(g, old);
     }
@@ -27,5 +28,5 @@ static void JGButtonPainter(JGCOMPONENT comp, JGGRAPHICS g)
 
 JGCOMPONENT JGCreateButton(string_t text)
 {
-    return JGCreateComponent(JGCOMP_TYPE_BUTTON, JGCreateText(text), JGCOMP_STATE_MIEVENT | JGCOMP_STATE_MOEVENT | JGCOMP_STATE_PSEVENT | JGCOMP_STATE_TGEVENT, NULL, JGButtonPainter);
+    return JGCreateComponent(JGCOMP_TYPE_BUTTON, JGCOMP_STATE_MIEVENT | JGCOMP_STATE_MOEVENT | JGCOMP_STATE_PSEVENT | JGCOMP_STATE_TGEVENT, NULL, JGButtonPainter);
 }

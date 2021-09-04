@@ -58,6 +58,7 @@ bool JGLinesIntersect(CLP(JGLINE), CLP(JGLINE));
 bool JGLineIntersection(CLP(JGLINE), CLP(JGLINE), JGPOINT*);
 bool JGLineRectIntersect(CLP(JGRECT), CLP(JGRECT));
 bool JGLineRectIntersection(CLP(JGRECT), CLP(JGLINE), JGLINE*);
+bool JGClipLineRect(CLP(JGLINE), CLP(JGRECT), JGLINE*);
 
 unit_t imax(unit_t, unit_t);
 unit_t imin(unit_t, unit_t);

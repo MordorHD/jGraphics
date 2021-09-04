@@ -13,17 +13,14 @@ static int JGCanvasListener(JGCOMPONENT comp, const JGEVENT *event)
     {
     case JGEVENT_ID_SIZE:
     {
-        //JGIMAGE__ newImage;
-        JGGRAPHICS buffer = canvas->buffer;
-        buffer->image.width = comp->width;
-        buffer->image.height = comp->height;
-        buffer->image.pixels = realloc(buffer->image.pixels, sizeof(color_t) * comp->width * comp->height);
-        /*printf("CPY1\n");
-        JGGRAPHICS buffer = canvas->buffer;
-        JGCopyImage(&newImage, 0, 0, &buffer->image);
-        printf("CPY2\n");
+        JGGRAPHICS buffer = canvas.buffer;
+        JGIMAGE newImage;
+        newImage.width = comp->width;
+        newImage.height = comp->height;
+        newImage.pixels = malloc(sizeof(color_t) * newImage.width * newImage.height);
+        JGCopyImage(&newImage, 0, 0, buffer->image.width, buffer->image.height, &buffer->image, 0, 0);
         free(buffer->image.pixels);
-        buffer->image = newImage;*/
+        buffer->image = newImage;
         break;
     }
     }
@@ -34,30 +31,28 @@ static int JGCanvasListener(JGCOMPONENT comp, const JGEVENT *event)
 static void JGCanvasPainter(JGCOMPONENT comp, JGGRAPHICS g)
 {
     JGCANVAS canvas = comp->canvas;
-    if(!canvas->painter)
+    if(!canvas.painter)
         return;
     if(comp->state & JGCANVAS_BUFFER)
     {
-        canvas->painter(comp, canvas->buffer);
-        JGCopyImage(&g->image, comp->x, comp->y, &comp->canvas->buffer->image);
+        canvas.painter(comp, canvas.buffer);
+        JGCopyImage(&g->image, comp->x, comp->y, comp->width, comp->height, &comp->canvas.buffer->image, 0, 0);
     }
     else
     {
-        canvas->painter(comp, g);
+        canvas.painter(comp, g);
     }
 }
 
 JGCOMPONENT JGCreateCanvas(bool useBuffer, JGPAINTER painter)
 {
-    JGCANVAS canvas = malloc(sizeof(JGCANVAS__));
+    JGCOMPONENT comp = JGCreateComponent(JGCOMP_TYPE_CANVAS, (useBuffer ? JGCANVAS_BUFFER : 0), JGCanvasListener, JGCanvasPainter);
     if(useBuffer)
     {
-        JGIMAGE__ image;
-        image.width = 1;
-        image.height = 1;
-        image.pixels = malloc(sizeof(int));
-        canvas->buffer = JGCreateGraphics(&image, NULL);
+        JGIMAGE img = {0};
+        JGCOLORPALETTE pal;
+        comp->canvas.buffer = JGCreateGraphics(&img, &pal);
     }
-    canvas->painter = painter;
-    return JGCreateComponent(JGCOMP_TYPE_BUTTON, canvas, (useBuffer ? JGCANVAS_BUFFER : 0), JGCanvasListener, JGCanvasPainter);
+    comp->canvas.painter = painter;
+    return comp;
 }

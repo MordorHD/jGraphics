@@ -9,25 +9,24 @@ color_t JGBrighterColor(color_t color, float factor)
     return (r << 16) | (g << 8) | b;
 }
 
-JGCOLORPALETTE JGCreateColorPalette(int type)
+bool JGGetStockPalette(JGCOLORPALETTE *pal, int type)
 {
-    JGCOLORPALETTE palette = malloc(sizeof(JGCOLORPALETTE__));
     switch(type)
     {
-    case 0:
+    case JGPALETTE_STYLE_SKY:
+        pal->bgC0Color = JGRGB(135, 206, 235);
+        pal->bgB0Color = JGRGB(235, 166, 135);
+        pal->bgB1Color = JGRGB(235, 217, 135);
+        pal->fgColor   = JGRGB(210, 120,  78);
+        pal->txColor   = JGRGB(200, 135, 235);
         break;
-    case JGCCP_SKY:
-        palette->bgC0Color = JGRGB(135, 206, 235);
-        palette->bgB0Color = JGRGB(235, 166, 135);
-        palette->bgB1Color = JGRGB(235, 217, 135);
-        palette->fgColor   = JGRGB(210, 120,  78);
-        palette->txColor   = JGRGB(200, 135, 235);
-        break;
+    default:
+        return 0;
     }
-    return palette;
+    return 1;
 }
 
-bool JGDestroyColorPalette(JGCOLORPALETTE palette)
+bool JGDestroyColorPalette(JGCOLORPALETTE *palette)
 {
     if(palette == NULL)
         return 0;
