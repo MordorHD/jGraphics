@@ -18,13 +18,12 @@
     ///////////////////////////////
     //        APPLICATION        //
     ///////////////////////////////
-    JGAPPLICATION JGCreateApplication(void)
+    JGAPPLICATION JGCreateApplication(JGCOMPONENT head)
     {
         JGAPPLICATION app = malloc(sizeof(JGAPPLICATION__));
         app->root = CreateWindow("JG_APP_WINDOW", "Title", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, GetModuleHandle(NULL), app);
         app->fullScreen = NULL;
-        app->container.childCnt = 0;
-        app->container.children = NULL;
+        app->head = head;
         JGCOLORPALETTE pal;
         JGGetStockPalette(&pal, JGPALETTE_STYLE_SKY);
         app->palette = pal;
@@ -50,14 +49,14 @@
         switch(msg)
         {
         case WM_SETFOCUS:
-            event->type = JGEVENT_ID_FOCUSGAINED;
+            event->id = JGEVENT_ID_FOCUSGAINED;
             break;
         case WM_KILLFOCUS:
-            event->type = JGEVENT_ID_FOCUSLOST;
+            event->id = JGEVENT_ID_FOCUSLOST;
             break;
         case WM_KEYDOWN:
         {
-            event->type = JGEVENT_ID_KEYPRESSED;
+            event->id = JGEVENT_ID_KEYPRESSED;
             event->vKey = wParam;
             event->keyChar = MapVirtualKey(wParam, MAPVK_VK_TO_CHAR);
             event->flags = lParam;
@@ -65,7 +64,7 @@
         }
         case WM_KEYUP:
         {
-            event->type = JGEVENT_ID_KEYRELEASED;
+            event->id = JGEVENT_ID_KEYRELEASED;
             event->vKey = wParam;
             event->keyChar = MapVirtualKey(wParam, MAPVK_VK_TO_CHAR);
             event->flags = lParam;
@@ -73,7 +72,7 @@
         }
         case WM_CHAR:
         {
-            event->type = JGEVENT_ID_KEYTYPED;
+            event->id = JGEVENT_ID_KEYTYPED;
             event->vKey = wParam;
             event->keyChar = wParam;
             event->flags = lParam;
@@ -84,7 +83,7 @@
         case WM_MBUTTONDOWN:
         case WM_XBUTTONDOWN:
         {
-            event->type = JGEVENT_ID_MOUSEPRESSED;
+            event->id = JGEVENT_ID_MOUSEPRESSED;
             event->mousePos.x = GET_X_LPARAM(lParam);
             event->mousePos.y = GET_Y_LPARAM(lParam);
             event->mouseButton = LOWORD(wParam);
@@ -96,7 +95,7 @@
         case WM_MBUTTONUP:
         case WM_XBUTTONUP:
         {
-            event->type = JGEVENT_ID_MOUSERELEASED;
+            event->id = JGEVENT_ID_MOUSERELEASED;
             event->mousePos.x = GET_X_LPARAM(lParam);
             event->mousePos.y = GET_Y_LPARAM(lParam);
             event->mouseButton = LOWORD(wParam);
@@ -105,7 +104,7 @@
         }
         case WM_MOUSEWHEEL:
         {
-            event->type = JGEVENT_ID_MOUSEWHEEL;
+            event->id = JGEVENT_ID_MOUSEWHEEL;
             event->mousePos.x = GET_X_LPARAM(lParam);
             event->mousePos.y = GET_Y_LPARAM(lParam);
             event->mouseButton = LOWORD(wParam);
@@ -114,7 +113,7 @@
         }
         case WM_MOUSEMOVE:
         {
-            event->type = JGEVENT_ID_MOUSEMOVED;
+            event->id = JGEVENT_ID_MOUSEMOVED;
             app->pmx = app->mx;
             app->pmy = app->my;
             event->mousePos.x = app->mx = GET_X_LPARAM(lParam);
@@ -125,7 +124,7 @@
             break;
         }
         default:
-            event->type = 0;
+            event->id = 0;
         }
     }
 
@@ -163,20 +162,10 @@
                 DispatchMessage(&msg);
                 // translate to jg event
                 WinTranslateProc(&event, app, msg.message, msg.wParam, msg.lParam, msg.time);
-                // if type == 0, then there is no need to forward it
-                if(!event.type)
+                // if id == 0, then there is no need to forward it
+                if(!event.id)
                     continue;
-                // forward event to all children
-                int cnt = app->container.childCnt;
-                JGCOMPONENT *chn = app->container.children;
-                short st = 0;
-                while(cnt--)
-                {
-                    st |= event.type >= JGEVENT_FORWARD_MIN && event.type <= JGEVENT_FORWARD_MAX ? JGDispatchEventAndForward(*chn, &event) :
-                                                                                                   JGDispatchEvent(*chn, &event);
-                    chn++;
-                }
-                if(st & JGCOMP_STATE_REDRAW)
+                if(JGDispatchEventAndForward(app->head, &event) & JGCOMP_STATE_REDRAW)
                     RedrawWindow(app->root, NULL, NULL, RDW_INVALIDATE);
             }
         }
@@ -194,17 +183,14 @@
         {
         case WM_SIZE:
         {
-            JGCONTAINER cont = app->container;
-            JGLAYOUT layout = cont.layout;
+            UINT width = LOWORD(lParam);
+            UINT height = HIWORD(lParam);
             JGGRAPHICS buffer = app->buffer;
-            RECT r;
-            GetClientRect(hWnd, &r);
-            buffer->image.width = r.right;
-            buffer->image.height = r.bottom;
-            buffer->image.pixels = realloc(buffer->image.pixels, sizeof(int) * (r.right * r.bottom));
-            if(layout.type == 0)
-                break;
-            layout.layoutFunc(layout, cont.children, cont.childCnt, 0, 0, r.right, r.bottom);
+            buffer->image.width = width;
+            buffer->image.height = height;
+            buffer->image.pixels = realloc(buffer->image.pixels, sizeof(int) * (width * height));
+            JGSIZE s = { width, height };
+            JGSetSize(app->head, s);
             break;
         }
         case WM_ERASEBKGND:
@@ -218,15 +204,7 @@
             JGSetFillColor(g, app->palette.bgC0Color);
             JGSetStrokeColor(g, app->palette.fgColor);
 
-            int cnt = app->container.childCnt;
-            JGCOMPONENT *chn = app->container.children;
-            while(cnt--)
-            {
-                JGRECT rect = { .x = ps.rcPaint.left, .y = ps.rcPaint.top, .width = ps.rcPaint.right - ps.rcPaint.left, .height = ps.rcPaint.bottom - ps.rcPaint.top };
-                if(JGRectsInstersect(&(*chn)->rect, &rect))
-                    JGRedrawComponent(*chn, g, 0);
-                chn++;
-            }
+            JGRedrawComponent(app->head, g, 0);
 
             JGIMAGE image = g->image;
             HBITMAP hbmp = CreateBitmap(image.width, image.height, 1, sizeof(color_t) * 8, image.pixels);
@@ -242,12 +220,6 @@
             EndPaint(hWnd, &ps);
             break;
         }
-        case WM_KEYDOWN:
-            app->keyStates[wParam] |= 0x2;
-            break;
-        case WM_KEYUP:
-            app->keyStates[wParam] ^= 0x3;
-            break;
         default:
             return DefWindowProc(hWnd, msg, wParam, lParam);
         }

@@ -6,9 +6,12 @@
 //          COMPONENT           //
 //////////////////////////////////
 
+JGRECT JGNULLRECT = { .x = 0, .y = 0, .width = 0, .height = 0 };
+
 JGCOMPONENT JGCreateComponent(int type, int state, JGLISTENER listener, JGPAINTER painter)
 {
     JGCOMPONENT comp = malloc(sizeof(JGCOMPONENT__));
+    comp->rect = JGNULLRECT;
     comp->type = type;
     comp->state = state | JGCOMP_STATE_REDRAW;
     comp->parent = NULL;
@@ -68,10 +71,10 @@ bool JGDestroyComponent(JGCOMPONENT comp)
 }
 
 // handling events
-short JGDispatchEvent(JGCOMPONENT comp, const JGEVENT *event)
+short JGDispatchEvent(JGCOMPONENT comp, CLP(JGEVENT) event)
 {
     int extraDispatch = 0;
-    switch(event->type)
+    switch(event->id)
     {
     case JGEVENT_ID_MOUSEPRESSED:
         if(comp->state & JGCOMP_STATE_MOUSEIN)
@@ -121,7 +124,7 @@ short JGDispatchEvent(JGCOMPONENT comp, const JGEVENT *event)
     if(extraDispatch != 0)
     {
         JGEVENT leEvent;
-        leEvent.type = extraDispatch;
+        leEvent.id = extraDispatch;
         leEvent.mousePos = event->mousePos;
         leEvent.mouseButton = event->mouseButton;
         leEvent.pressedButton = event->pressedButton;
@@ -131,7 +134,7 @@ short JGDispatchEvent(JGCOMPONENT comp, const JGEVENT *event)
 }
 
 // and forwarding them to children
-short JGDispatchEventAndForward(JGCOMPONENT comp, const JGEVENT *event)
+short JGDispatchEventAndForward(JGCOMPONENT comp, CLP(JGEVENT) event)
 {
     short st = JGDispatchEvent(comp, event);
     if(comp->state & JGCOMP_STATE_FORWARD)
@@ -173,13 +176,14 @@ void JGAddListener(JGCOMPONENT comp, JGLISTENER listener)
     comp->listenerCnt++;
 }
 
-void JGSetBounds(JGCOMPONENT comp, JGRECT rect)
+bool JGSetBounds(JGCOMPONENT comp, JGRECT rect)
 {
-    JGSetPos(comp, rect.point);
-    JGSetSize(comp, rect.size);
+    bool bp = JGSetPos(comp, rect.point);
+    bool bs = JGSetSize(comp, rect.size);
+    return bp || bs;
 }
 
-void JGSetPos(JGCOMPONENT comp, JGPOINT pos)
+bool JGSetPos(JGCOMPONENT comp, JGPOINT pos)
 {
     unit_t dx = pos.x - comp->rect.x;
     unit_t dy = pos.y - comp->rect.y;
@@ -200,7 +204,7 @@ void JGSetPos(JGCOMPONENT comp, JGPOINT pos)
                 chn++;
             }
         }
-        JGEVENT event = { .type = JGEVENT_ID_SIZE,
+        JGEVENT event = { .id = JGEVENT_ID_POS,
                           .oldPosX = comp->x,
                           .oldPosY = comp->y,
                           .posX = pos.x,
@@ -208,10 +212,12 @@ void JGSetPos(JGCOMPONENT comp, JGPOINT pos)
         comp->rect.point = pos;
         comp->state |= JGCOMP_STATE_REDRAW;
         JGDispatchEvent(comp, &event);
+        return 1;
     }
+    return 0;
 }
 
-void JGSetSize(JGCOMPONENT comp, JGSIZE size)
+bool JGSetSize(JGCOMPONENT comp, JGSIZE size)
 {
     unit_t dw = size.width - comp->rect.width;
     unit_t dh = size.height - comp->rect.height;
@@ -225,7 +231,7 @@ void JGSetSize(JGCOMPONENT comp, JGSIZE size)
             if((layout = cont.layout).type != 0)
                 layout.layoutFunc(layout, cont.children, cont.childCnt, comp->x, comp->y, size.width, size.height);
         }
-        JGEVENT event = { .type = JGEVENT_ID_SIZE,
+        JGEVENT event = { .id = JGEVENT_ID_SIZE,
                           .oldSizeX = comp->width,
                           .oldSizeY = comp->height,
                           .sizeX = size.width,
@@ -233,5 +239,7 @@ void JGSetSize(JGCOMPONENT comp, JGSIZE size)
         comp->rect.size = size;
         comp->state |= JGCOMP_STATE_REDRAW;
         JGDispatchEvent(comp, &event);
+        return 1;
     }
+    return 0;
 }

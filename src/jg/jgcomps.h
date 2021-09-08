@@ -12,7 +12,7 @@
 struct ComponentTag;
 struct ApplicationTag;
 
-typedef int (*JGLISTENER)(struct ComponentTag*, const JGEVENT*);
+typedef int (*JGLISTENER)(struct ComponentTag*, CLP(JGEVENT));
 typedef void (*JGPAINTER)(struct ComponentTag*, JGGRAPHICS);
 
 #define JGCOMP_TYPE_CONTAINER 0x1
@@ -28,14 +28,10 @@ struct ComponentTag *JGCreateContainer(void);
 // JGCOMPONENT comp = JGCreateContainer();
 // JGAddChild(comp, child); instead of JGAddChild(comp->container, child);
 // matching macros are below
-void JGAddChild0(JGCONTAINER*, struct ComponentTag*);
-bool JGRemoveChild0(JGCONTAINER*, int);
-int JGIndexOfChild0(JGCONTAINER*, struct ComponentTag*);
-
-#define JGAddChild(parent, child) JGAddChild0(&(parent)->container, child)
-#define JGRemoveChild(parent, index) JGRemoveChild0(&(parent)->container, index)
-#define JGIndexOfChild(parent, child) JGIndexOfChild0(&(parent)->container, child)
-#define JGContainsChild(parent, child) (JGIndexOfChild0(&(parent)->container, child)!=-1)
+void JGAddChild(struct ComponentTag*, struct ComponentTag*);
+void JGAddChildren(struct ComponentTag*, int, ...);
+bool JGRemoveChild(struct ComponentTag*, int);
+int JGIndexOfChild(struct ComponentTag*, struct ComponentTag*);
 
 #define JGSetLayout(comp, layout_) ((comp)->container.layout=layout_)
 #define JGRelayout(comp) (comp)->layout\
@@ -53,18 +49,24 @@ struct ComponentTag *JGCreateButton(string_t);
 
 #define JGCOMP_TYPE_SLIDER 0x3
 
+#define JGCOMP_STATE_SLIDER_MOUSEIN JGCOMP_STATE_UNUSED1
+
+#define JGSLIDER_INCREMENT_FACTOR 8
+#define JGSLIDER_SLIDER_WIDTH 15
+
 typedef struct SliderTag {
-    int minValue;
-    int value;
-    int maxValue;
+    unit_t minValue;
+    unit_t value;
+    unit_t maxValue;
+    unit_t pos;
 } JGSLIDER;
 
-struct ComponentTag *JGCreateSlider(int, int, int);
+struct ComponentTag *JGCreateSlider(unit_t, unit_t, unit_t);
 
 #define JGCOMP_TYPE_TEXTAREA 0x4
 #define JGCOMP_TYPE_CANVAS 0x5
 
-#define JGCANVAS_BUFFER JGCOMP_STATE_UNUSED1
+#define JGCANVAS_STATE_BUFFER JGCOMP_STATE_UNUSED1
 
 typedef struct CanvasTag {
     JGGRAPHICS buffer;
@@ -100,12 +102,12 @@ struct ComponentTag *JGCreateLabel(string_t);
 #define JGCOMP_STATE_PSEVENT 0x200
 #define JGCOMP_STATE_TGEVENT 0x400
 #define JGCOMP_STATE_FIXEDSIZE 0x800
+#define JGCOMP_STATE_FOCUSED 0x1000
 
 // These bits are used by component bases
-#define JGCOMP_STATE_UNUSED1 0x1000
-#define JGCOMP_STATE_UNUSED2 0x2000
-#define JGCOMP_STATE_UNUSED3 0x4000
-#define JGCOMP_STATE_UNUSED4 0x8000
+#define JGCOMP_STATE_UNUSED1 0x2000
+#define JGCOMP_STATE_UNUSED2 0x4000
+#define JGCOMP_STATE_UNUSED3 0x8000
 
 typedef struct ComponentTag {
     short type;
@@ -116,7 +118,7 @@ typedef struct ComponentTag {
     //
     // Bit 4 - If this component should get redrawn
     // Bit 5 - If this component should not draw its background
-    // Bit 6 - If this component forwards forwardable (events width type between JGEVENT_FORWARD_MIN and JGEVENT_FORWARD_MAX) events
+    // Bit 6 - If this component forwards forwardable (events with type between JGEVENT_FORWARD_MIN and JGEVENT_FORWARD_MAX) events
     //         If this bit is toggled, the component base struct must have JGCOMPONENT* (children) as their first value and int as the 2nd
     // Bit 7 - If this component should layout its children
     // Bit 8 - If this component redraws when the mouse enters it
@@ -124,7 +126,8 @@ typedef struct ComponentTag {
     // Bit 10 - If this component redraws when it is pressed
     // Bit 11 - If this component redraws when it is toggled
     // Bit 12 - If this components size should get affected by a layout
-    // Bit 13 - 16 - Base component defined
+    // Bit 13 - If this components is focused
+    // Bit 14 - 16 - Base component defined
     short state;
     // all children from the parent
     struct ComponentTag **parent;
@@ -146,7 +149,7 @@ typedef struct ComponentTag {
     union {
         JGTEXT text;
         JGCONTAINER container;
-        //JGSLIDER slider;
+        JGSLIDER slider;
         //JGTEXTAREA textArea;
         JGCANVAS canvas;
         //JGCHECKBOX checkBox;
@@ -161,11 +164,12 @@ typedef struct ComponentTag {
 
 JGCOMPONENT JGCreateComponent(int, int, JGLISTENER, JGPAINTER);
 
-short JGDispatchEvent(JGCOMPONENT, const JGEVENT*);
-short JGDispatchEventAndForward(JGCOMPONENT, const JGEVENT*);
+short JGDispatchEvent(JGCOMPONENT, CLP(JGEVENT));
+short JGDispatchEventAndForward(JGCOMPONENT, CLP(JGEVENT));
 bool JGDestroyComponent(JGCOMPONENT);
 
 #define JGSetState(comp, stFlag, bool) ((bool)?((comp)->state|=stFlag):((comp)->state&=~stFlag))
+#define JGGetState(comp, stFlag) ((comp)->state&stFlag)
 #define JGSetFixedSize(comp, bool) JGSetState(comp, JGCOMP_STATE_FIXEDSIZE, bool)
 #define JGSetText(comp, str) JGSetString((comp)->text, str)
 #define JGGetText(comp, buf, bufLen) JGGetString((comp)->text, buf, bufLen)
@@ -176,12 +180,12 @@ bool JGDestroyComponent(JGCOMPONENT);
 void JGRedrawComponent(JGCOMPONENT, JGGRAPHICS, int);
 void JGAddListener(JGCOMPONENT, JGLISTENER);
 
-void JGSetBounds(JGCOMPONENT, JGRECT);
-void JGSetPos(JGCOMPONENT, JGPOINT);
-void JGSetSize(JGCOMPONENT, JGSIZE);
+bool JGSetBounds(JGCOMPONENT, JGRECT);
+bool JGSetPos(JGCOMPONENT, JGPOINT);
+bool JGSetSize(JGCOMPONENT, JGSIZE);
 
-#define JGSetX(comp, posX) ((comp->x)=posX)
-#define JGSetY(comp, posY) ((comp->y)=posY)
+#define JGSetX(comp, posX) ((comp)->x=posX)
+#define JGSetY(comp, posY) ((comp)->y=posY)
 #define JGSetWidth(comp, sizeX) ((comp)->width=sizeX)
 #define JGSetHeight(comp, sizeY) ((comp)->height=sizeY)
 

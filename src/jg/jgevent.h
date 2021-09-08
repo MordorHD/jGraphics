@@ -23,12 +23,14 @@
 #define JGEVENT_ID_MOUSEMOVED 0x24
 #define JGEVENT_ID_MOUSEWHEEL 0x25
 
-#define JGEVENT_FORWARD_MAX 0x28
+// user space
 
-#define JGEVENT_ID_SIZE 0x41
-#define JGEVENT_ID_POS 0x42
-#define JGEVENT_ID_FOCUSGAINED 0x43
-#define JGEVENT_ID_FOCUSLOST 0x44
+#define JGEVENT_FORWARD_MAX 0x50
+
+#define JGEVENT_ID_SIZE 0x61
+#define JGEVENT_ID_POS 0x62
+#define JGEVENT_ID_FOCUSGAINED 0x63
+#define JGEVENT_ID_FOCUSLOST 0x64
 
 #define JGEVENT_MB_LEFT 0x1
 #define JGEVENT_MB_RIGHT 0x2
@@ -37,19 +39,25 @@
 #define JGEVENT_MB_X2 0x40
 
 typedef struct EventTag {
-    int type; // 4
+    int id; // 4
     time_t time; // 12
     union {
         // mouse event
         struct {
-            JGPOINT mousePos;
+            union {
+                JGPOINT mousePos;
+                struct {
+                    unit_t x; // 28
+                    unit_t y; // 32
+                };
+            };
             int mouseButton; // 24
             union {
                 int deltaWheel; // 28
                 int pressedButton; // 28
                 struct {
-                    int dx; // 28
-                    int dy; // 32
+                    unit_t dx; // 28
+                    unit_t dy; // 32
                 };
             };
         };
@@ -61,16 +69,16 @@ typedef struct EventTag {
         };
         // component event
         struct {
-            int oldPosX; // 16
-            int oldPosY; // 20
-            int posX; // 24
-            int posY; // 28
+            unit_t oldPosX; // 16
+            unit_t oldPosY; // 20
+            unit_t posX; // 24
+            unit_t posY; // 28
         };
         struct {
-            int oldSizeX; // 16
-            int oldSizeY; // 20
-            int sizeX; // 24
-            int sizeY; // 28
+            unit_t oldSizeX; // 16
+            unit_t oldSizeY; // 20
+            unit_t sizeX; // 24
+            unit_t sizeY; // 28
         };
     };
 } JGEVENT;

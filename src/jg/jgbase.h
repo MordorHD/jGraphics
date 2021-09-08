@@ -8,9 +8,9 @@
    When using any function or macro in this library, only use NULL arguments when it is explicitly allowed.
    Naming conventions:
    - Every macro function or struct has the prefix JG
-   - All structs have (excluding JGEVENT) have two typedef version
-     - JGSTRUCT__
-     - *JGSTRUCT
+   - Structures have either two typedef versions
+     1. JGSTRUCT__, *JGSTRUCT
+     2. JGSTRUCT
    - Usually, there are functions given to create and destroy the struct pointers; in this pattern:
      - JGSTRUCT JGCreateStruct(void)
      - bool JGDestroyStruct(JGSTRUCT)
@@ -32,17 +32,16 @@
     #include <windowsx.h>
     #include <processthreadsapi.h>
 
-    #define JGRGB(r, g, b) RGB(r, g, b)
+    #define JGRGB(r, g, b) RGB(b, g, r)
 
     typedef struct ApplicationTag {
         HWND root;
         HWND fullScreen;
         JGCOMPONENT focus;
-        JGCONTAINER container;
+        JGCOMPONENT head;
         HANDLE thread;
         JGCOLORPALETTE palette;
         JGGRAPHICS buffer;
-        char keyStates[0x100];
         int pmx;
         int pmy;
         int mx;
@@ -90,21 +89,46 @@
     typedef struct ApplicationTag {
         Display *display;
         Window root;
+        JGCOMPONENT focus;
         JGCONTAINER container;
         pthread_t thread;
-        char keyStates[0x100];
+        JGCOLORPALETTE palette;
+        JGGRAPHICS buffer;
+        int pmx;
+        int pmy;
+        int mx;
+        int my;
     } JGAPPLICATION__, *JGAPPLICATION;
 
-    #define JG_INIT
-    #define JG_DISPOSE
+    #define JGSetAppBounds(app, x, y, w, h)
+    #define JGGetAppBounds(app, lpr)
+
+    #define JGSetAppTitle(app, title) XStoreName(app->root, title)
+    #define JGGetAppTitle(app, title, max_n)
+
+    #define JGIsAppFocused(app) (GetFocus()==(app)->root)
+
+    struct ClockTag;
+
+    // a clock is destroyed by returning 0 in this function
+    typedef int (*JGCLOCKFUNC)(struct ClockTag*, clock_t);
+
+    #define JGCLOCKS_STOPPED 0x0
+    #define JGCLOCKS_RUNNING 0x1
+    #define JGCLOCKS_INTERRUPTED 0x2
+
+    typedef struct ClockTag {
+        pthread_t clockThread;
+        JGCLOCKFUNC clockFunc;
+        clock_t runtime;
+        clock_t tickDelay;
+    } JGCLOCK__, *JGCLOCK;
+
+    void JGInit(int, char**);
 
 #endif // _WIN32
 
-#define JGIsKeyDown(app, vk) ((app)->keyStates[vk] & 0x2)
-#define JGIsKeyUp(app, vk) (!((app)->keyStates[vk] & 0x2))
-#define JGIsKeyToggled(app, vk) ((app)->keyStates[vk] & 0x1)
-
-JGAPPLICATION JGCreateApplication(void);
+JGAPPLICATION JGCreateApplication(JGCOMPONENT);
 bool JGDestroyApplication(JGAPPLICATION);
 
 #define JGRA_WAIT 0x0

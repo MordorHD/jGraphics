@@ -17,7 +17,7 @@ int clockfunc(JGCLOCK cl, clock_t delay)
 
 int ButtonListener(JGCOMPONENT comp, const JGEVENT *event)
 {
-    switch(event->type)
+    switch(event->id)
     {
     case JGEVENT_ID_TOGGLE:
         printf("TOGGLED\n");
@@ -30,7 +30,7 @@ int CanvasListener(JGCOMPONENT comp, const JGEVENT *event)
 {
     //static int x1 = -1;
     //static int y1 = 0;
-    switch(event->type)
+    switch(event->id)
     {
     case JGEVENT_ID_MOUSEPRESSED:
         /*if(x1 != -1)
@@ -50,13 +50,13 @@ int CanvasListener(JGCOMPONENT comp, const JGEVENT *event)
         JGPOINT mp = event->mousePos;
         JGGRAPHICS g = comp->canvas.buffer;
         JGFillCircle(g, 40, 40, 30);
-        if(event->mouseButton & JGEVENT_MB_LEFT)
+        if((event->mouseButton & JGEVENT_MB_LEFT) && JGGetState(comp, JGCOMP_STATE_PRESSED))
         {
             JGSetStrokeColor(g, 0xFF00FF);
             JGDrawLine_(g, mp.x - event->dx - comp->x, mp.y - event->dy - comp->y,
                           mp.x - comp->x, mp.y - comp->y);
         }
-        else if(event->mouseButton & JGEVENT_MB_RIGHT)
+        else if((event->mouseButton & JGEVENT_MB_RIGHT) && JGGetState(comp, JGCOMP_STATE_PRESSED))
         {
             JGSetFillColor(g, 0x000000);
             JGRECT r;
@@ -182,11 +182,11 @@ int main(int argc, char **argv)
     JGLAYOUT flowlayout;
     JGGetStockLayout(&flowlayout, JGLAYOUT_FLOW);
 
-    JGAPPLICATION app = JGCreateApplication();
-    JGSetLayout(app, stacklayout);
+    JGCOMPONENT window = JGCreateContainer();
+    JGSetLayout(window, stacklayout);
+    JGAPPLICATION app = JGCreateApplication(window);
 
     JGCOMPONENT topLabel = JGCreateLabel("JG Demo");
-    JGAddChild(app, topLabel);
 
     // bottom container //
     JGCOMPONENT bottomCont = JGCreateContainer();
@@ -197,14 +197,18 @@ int main(int argc, char **argv)
     JGSetSize(button, s);
     JGSetFixedSize(button, 1); // alternative: JGSetState(button, JGCOMPS_FIXEDSIZE, 1);
     JGAddListener(button, ButtonListener);
-    JGAddChild(bottomCont, button);
 
     JGCOMPONENT canvas = JGCreateCanvas(1, CanvasPainter);
-    JGAddChild(bottomCont, canvas);
     JGAddListener(canvas, CanvasListener);
+
+    JGCOMPONENT slider = JGCreateSlider(0, 30, 100);
+    JGSetSize(slider, s);
+    JGSetFixedSize(slider, 1);
+
+    JGAddChildren(bottomCont, 3, button, canvas, slider);
     //////////////////////
 
-    JGAddChild(app, bottomCont);
+    JGAddChildren(window, 2, topLabel, bottomCont);
 
     //JGToggleFullScreen(app);
 
